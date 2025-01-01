@@ -14,9 +14,15 @@ interface Product {
 
 type ProductResponse = Product | { error: string };
 
-const filepath = path.join(process.cwd(), 'src', 'app', 'prod.json'); // Correct path for your structure
+const filepath = path.join(process.cwd(), 'src', 'app', 'prod.json');
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+interface GetRequestParams {
+  params: {
+    id: string;
+  };
+}
+
+export async function GET(request: Request, { params }: GetRequestParams) {
   try {
     const fileContents = await fs.promises.readFile(filepath, 'utf8');
     const products: Product[] = JSON.parse(fileContents);
