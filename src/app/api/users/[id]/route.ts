@@ -12,38 +12,35 @@ interface Product {
   sizes: string[];
 }
 
-// Define the path to the product data file
-const filepath = path.join(process.cwd(), 'src', 'app', 'data', 'prod.json');
+type ProductResponse = Product | { error: string };
 
-// GET request for a specific product by ID
+const filepath = path.join(process.cwd(), 'src', 'app', 'prod.json'); // Correct path for your structure
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    // Check if the product data file exists
-    if (!fs.existsSync(filepath)) {
-      return NextResponse.json({ error: 'Product data file not found' }, { status: 500 });
-    }
-
-    // Read and parse the JSON file
     const fileContents = await fs.promises.readFile(filepath, 'utf8');
     const products: Product[] = JSON.parse(fileContents);
 
-    // Extract the `id` from the dynamic route
     const productId = parseInt(params.id, 10);
 
     if (isNaN(productId)) {
-      return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
+      return NextResponse.json<ProductResponse>({ error: 'Invalid product ID' }, { status: 400 });
     }
 
-    // Find the product by ID
-    const product = products.find((p) => p.id === productId);
+    const product = products.find((p: Product) => p.id === productId);
+
     if (!product) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      return NextResponse.json<ProductResponse>({ error: 'Product not found' }, { status: 404 });
     }
 
-    // Return the product as a JSON response
-    return NextResponse.json(product, { status: 200 });
-  } catch (error) {
-    console.error("Error fetching product:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json<ProductResponse>(product, { status: 200 });
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error) {
+      if ((error as { code: string }).code === 'ENOENT') {
+        return NextResponse.json<ProductResponse>({ error: 'Product data file not found' }, { status: 404 });
+      }
+    }
+    console.error("Error reading product data file:", error);
+    return NextResponse.json<ProductResponse>({ error: "Internal server error" }, { status: 500 });
   }
 }
