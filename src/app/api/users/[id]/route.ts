@@ -12,38 +12,69 @@ interface Product {
   sizes: string[];
 }
 
+// Define the path to the product data file
 const filepath = path.join(process.cwd(), "src", "app", "data", "prod.json");
 
-// GET request for a specific product by ID
+// Utility function to safely read the file
+const readFileSafe = async (filePath: string): Promise<string | null> => {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    return await fs.promises.readFile(filePath, "utf8");
+  } catch (error) {
+    console.error("Error reading file:", error);
+    return null;
+  }
+};
+
+// GET request handler
 export async function GET(
   request: Request,
   context: { params: { id: string } }
 ) {
   try {
-    if (!fs.existsSync(filepath)) {
+    // Ensure the data file exists and is readable
+    const fileContents = await readFileSafe(filepath);
+    if (!fileContents) {
       return NextResponse.json(
-        { error: "Product data file not found" },
+        { error: "Product data file not found or inaccessible" },
         { status: 500 }
       );
     }
 
-    const fileContents = await fs.promises.readFile(filepath, "utf8");
-    const products: Product[] = JSON.parse(fileContents);
-
-    // Extract the `id` from the dynamic route
-    const productId = parseInt(context.params.id, 10);
-
-    // Find the product with the given ID
-    const product = products.find((p) => p.id === productId);
-
-    if (!product) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    // Parse the product data
+    let products: Product[] = [];
+    try {
+      products = JSON.parse(fileContents);
+    } catch (error) {
+      console.error("Error parsing JSON data:", error);
+      return NextResponse.json(
+        { error: "Invalid product data format" },
+        { status: 500 }
+      );
     }
 
-    // Return the product as a JSON response
+    // Extract and validate the product ID
+    const productId = parseInt(context.params.id, 10);
+    if (isNaN(productId)) {
+      return NextResponse.json(
+        { error: "Invalid product ID" },
+        { status: 400 }
+      );
+    }
+
+    // Find the product by ID
+    const product = products.find((p) => p.id === productId);
+    if (!product) {
+      return NextResponse.json(
+        { error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    // Return the product data as a JSON response
     return NextResponse.json(product, { status: 200 });
   } catch (error) {
-    console.error("Error fetching product:", error);
+    console.error("Unhandled error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
