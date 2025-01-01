@@ -2,51 +2,52 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  currency: string;
-  price: number;
-  image: string;
-  sizes: string[];
+
+
+const filepath = path.join(process.cwd(), "src", "app", "prod.json");
+
+
+export async function GET(){
+    try {
+    // Use fs.promises.access to check if the file exists
+    await fs.promises.access(filepath);
+        
+        // Read the file asynchronously
+        const filecontents = await fs.promises.readFile(filepath, "utf8");
+        const prod = JSON.parse(filecontents!);
+
+        return NextResponse.json(prod);
+    }
+    catch (error) {
+        // Handle errors gracefully
+        return NextResponse.json(
+        { message: "Error reading file", error },
+        {status: 500})
+        
+    }
 }
 
-type ProductResponse = Product | { error: string };
 
-const filepath = path.join(process.cwd(), 'src', 'app', 'prod.json');
+export async function POST (req: Request){
+ try {
+    // Parse the JSON request body
+    const body = await req.json();
 
-interface GetRequestParams {
-  params: {
-    id: string;
-  };
-}
+    
+        // Read the existing file asynchronously
+        const filecontents = await fs.promises.readFile(filepath, "utf8");
+        const prod = JSON.parse(filecontents);
+        // Add the new product to the array
+        prod.push(body);
+        // Write the updated array back to the file asynchronously
+        await fs.promises.writeFile(filepath, JSON.stringify(prod, null, 2), "utf8");
 
-export async function GET(request: Request, { params }: GetRequestParams) {
-  try {
-    const fileContents = await fs.promises.readFile(filepath, 'utf8');
-    const products: Product[] = JSON.parse(fileContents);
-
-    const productId = parseInt(params.id, 10);
-
-    if (isNaN(productId)) {
-      return NextResponse.json<ProductResponse>({ error: 'Invalid product ID' }, { status: 400 });
-    }
-
-    const product = products.find((p: Product) => p.id === productId);
-
-    if (!product) {
-      return NextResponse.json<ProductResponse>({ error: 'Product not found' }, { status: 404 });
-    }
-
-    return NextResponse.json<ProductResponse>(product, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof Error && 'code' in error) {
-      if ((error as { code: string }).code === 'ENOENT') {
-        return NextResponse.json<ProductResponse>({ error: 'Product data file not found' }, { status: 404 });
-      }
-    }
-    console.error("Error reading product data file:", error);
-    return NextResponse.json<ProductResponse>({ error: "Internal server error" }, { status: 500 });
-  }
+        return NextResponse.json(body, {status: 201});
+    
+ } catch (error) {
+    return NextResponse.json(
+        { message: "Error reading file", error },
+        {status: 500}
+    )
+ }
 }
