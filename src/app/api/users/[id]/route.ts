@@ -13,36 +13,37 @@ interface Product {
 }
 
 // Define the path to the product data file
-const filepath = path.join(process.cwd(), "src", "app", "data", "prod.json");
+const filepath = path.join(process.cwd(), 'src', 'app', 'data', 'prod.json');
 
-// GET request handler
+// GET request for a specific product by ID
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    // Ensure the data file exists and is readable
+    // Check if the product data file exists
     if (!fs.existsSync(filepath)) {
-      return NextResponse.json({ error: "Product data file not found" }, { status: 500 });
+      return NextResponse.json({ error: 'Product data file not found' }, { status: 500 });
     }
 
-    // Read and parse the product data
-    const fileContents = await fs.promises.readFile(filepath, "utf8");
+    // Read and parse the JSON file
+    const fileContents = await fs.promises.readFile(filepath, 'utf8');
     const products: Product[] = JSON.parse(fileContents);
 
-    // Extract and validate the product ID
+    // Extract the `id` from the dynamic route
     const productId = parseInt(params.id, 10);
+
     if (isNaN(productId)) {
-      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
     }
 
     // Find the product by ID
     const product = products.find((p) => p.id === productId);
     if (!product) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    // Return the product data as a JSON response
+    // Return the product as a JSON response
     return NextResponse.json(product, { status: 200 });
   } catch (error) {
-    console.error("Unhandled error:", error);
+    console.error("Error fetching product:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
